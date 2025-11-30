@@ -4,11 +4,13 @@ Kompletny instalator serwera Counter-Strike 1.6 z najnowszymi modyfikacjami, got
 
 ## 🚀 Szybka instalacja (jedna komenda)
 
+> ⚠️ **Uwaga bezpieczeństwa:** Zawsze zalecamy przejrzenie skryptu przed jego uruchomieniem. Możesz to zrobić pobierając skrypt lokalnie lub przeglądając go na GitHubie.
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/PtakuPL/ks16/main/install.sh | bash
 ```
 
-Lub jeśli wolisz najpierw przejrzeć skrypt:
+Lub jeśli wolisz najpierw przejrzeć skrypt (zalecane):
 
 ```bash
 wget https://raw.githubusercontent.com/PtakuPL/ks16/main/install.sh

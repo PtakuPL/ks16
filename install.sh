@@ -18,13 +18,15 @@ NC='\033[0m' # No Color
 # Default installation directory
 INSTALL_DIR="${1:-$HOME/cs16_server}"
 
-# Version URLs (latest releases)
+# Static URLs (SteamCMD and AMX Mod X)
 STEAMCMD_URL="https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz"
-REHLDS_URL="https://github.com/dreamstalker/rehlds/releases/latest/download/rehlds-bin-3.13.0.788-linux.zip"
 AMXMODX_URL="https://www.amxmodx.org/amxxdrop/1.10/amxmodx-1.10.0-git5467-base-linux.tar.gz"
 AMXMODX_CSTRIKE_URL="https://www.amxmodx.org/amxxdrop/1.10/amxmodx-1.10.0-git5467-cstrike-linux.tar.gz"
-METAMOD_URL="https://github.com/theAsmodai/metamod-r/releases/latest/download/metamod-r-1.3.0.149-linux.tar.gz"
-REGAMEDLL_URL="https://github.com/s1lentq/ReGameDLL_CS/releases/latest/download/regamedll-bin-5.26.0.668-linux.zip"
+
+# GitHub API endpoints for latest releases
+REHLDS_API="https://api.github.com/repos/dreamstalker/rehlds/releases/latest"
+METAMOD_API="https://api.github.com/repos/theAsmodai/metamod-r/releases/latest"
+REGAMEDLL_API="https://api.github.com/repos/s1lentq/ReGameDLL_CS/releases/latest"
 
 # Print colored message
 print_msg() {
@@ -39,6 +41,43 @@ print_header() {
     print_msg "$BLUE" "$1"
     print_msg "$BLUE" "=============================================="
     echo ""
+}
+
+# Helper function to get latest GitHub release download URL
+get_github_release_url() {
+    local api_url="$1"
+    local pattern="$2"
+    local url
+    
+    url=$(curl -sL "$api_url" | grep "browser_download_url.*$pattern" | head -n1 | cut -d '"' -f 4)
+    
+    if [ -n "$url" ] && [[ "$url" == http* ]]; then
+        echo "$url"
+    fi
+}
+
+# Helper function to download file with verification
+download_file() {
+    local url="$1"
+    local output="$2"
+    local description="$3"
+    
+    if [ -z "$url" ]; then
+        print_msg "$RED" "Error: No download URL provided for $description"
+        exit 1
+    fi
+    
+    print_msg "$YELLOW" "Downloading $description from: $url"
+    
+    if ! wget -q "$url" -O "$output"; then
+        print_msg "$RED" "Error: Failed to download $description"
+        exit 1
+    fi
+    
+    if [ ! -s "$output" ]; then
+        print_msg "$RED" "Error: Downloaded file is empty: $output"
+        exit 1
+    fi
 }
 
 # Check if running as root
@@ -56,7 +95,7 @@ install_dependencies() {
     if [ -f /etc/debian_version ]; then
         # Debian/Ubuntu
         print_msg "$GREEN" "Detected Debian/Ubuntu system"
-        sudo dpkg --add-architecture i386
+        sudo dpkg --add-architecture i386 2>/dev/null || true
         sudo apt-get update
         sudo apt-get install -y lib32gcc-s1 lib32stdc++6 curl wget unzip tar screen
     elif [ -f /etc/redhat-release ]; then
@@ -93,7 +132,7 @@ install_steamcmd() {
     
     if [ ! -f "steamcmd.sh" ]; then
         print_msg "$YELLOW" "Downloading SteamCMD..."
-        curl -sqL "$STEAMCMD_URL" | tar zxvf -
+        curl -sqL "$STEAMCMD_URL" | tar zxf -
     else
         print_msg "$GREEN" "SteamCMD already installed"
     fi
@@ -123,16 +162,10 @@ install_rehlds() {
     
     cd "$INSTALL_DIR/temp"
     
-    print_msg "$YELLOW" "Downloading ReHLDS..."
+    # Get latest release URL from GitHub API
+    REHLDS_URL=$(get_github_release_url "$REHLDS_API" "linux.*zip")
     
-    # Try to get latest release from GitHub API
-    REHLDS_LATEST=$(curl -s https://api.github.com/repos/dreamstalker/rehlds/releases/latest | grep "browser_download_url.*linux" | cut -d '"' -f 4 | head -n1)
-    
-    if [ -n "$REHLDS_LATEST" ]; then
-        wget -q "$REHLDS_LATEST" -O rehlds.zip || wget -q "$REHLDS_URL" -O rehlds.zip
-    else
-        wget -q "$REHLDS_URL" -O rehlds.zip
-    fi
+    download_file "$REHLDS_URL" "rehlds.zip" "ReHLDS"
     
     unzip -o rehlds.zip -d rehlds_temp
     
@@ -150,16 +183,10 @@ install_metamod() {
     
     cd "$INSTALL_DIR/temp"
     
-    print_msg "$YELLOW" "Downloading Metamod-r..."
+    # Get latest release URL from GitHub API
+    METAMOD_URL=$(get_github_release_url "$METAMOD_API" "linux.*tar.gz")
     
-    # Try to get latest release from GitHub API
-    METAMOD_LATEST=$(curl -s https://api.github.com/repos/theAsmodai/metamod-r/releases/latest | grep "browser_download_url.*linux.*tar.gz" | cut -d '"' -f 4 | head -n1)
-    
-    if [ -n "$METAMOD_LATEST" ]; then
-        wget -q "$METAMOD_LATEST" -O metamod.tar.gz || wget -q "$METAMOD_URL" -O metamod.tar.gz
-    else
-        wget -q "$METAMOD_URL" -O metamod.tar.gz
-    fi
+    download_file "$METAMOD_URL" "metamod.tar.gz" "Metamod-r"
     
     tar -xzf metamod.tar.gz
     
@@ -195,16 +222,10 @@ install_regamedll() {
     
     cd "$INSTALL_DIR/temp"
     
-    print_msg "$YELLOW" "Downloading ReGameDLL_CS..."
+    # Get latest release URL from GitHub API
+    REGAMEDLL_URL=$(get_github_release_url "$REGAMEDLL_API" "linux.*zip")
     
-    # Try to get latest release from GitHub API
-    REGAMEDLL_LATEST=$(curl -s https://api.github.com/repos/s1lentq/ReGameDLL_CS/releases/latest | grep "browser_download_url.*linux" | cut -d '"' -f 4 | head -n1)
-    
-    if [ -n "$REGAMEDLL_LATEST" ]; then
-        wget -q "$REGAMEDLL_LATEST" -O regamedll.zip || wget -q "$REGAMEDLL_URL" -O regamedll.zip
-    else
-        wget -q "$REGAMEDLL_URL" -O regamedll.zip
-    fi
+    download_file "$REGAMEDLL_URL" "regamedll.zip" "ReGameDLL_CS"
     
     unzip -o regamedll.zip -d regamedll_temp
     
@@ -218,9 +239,10 @@ install_regamedll() {
     
     rm -rf regamedll_temp regamedll.zip
     
-    # Update plugins.ini for ReGameDLL
+    # Create plugins.ini for Metamod (overwrite to avoid duplicates)
     mkdir -p "$INSTALL_DIR/server/cstrike/addons/metamod"
-    cat >> "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini" << 'EOF'
+    cat > "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini" << 'EOF'
+; Metamod plugins configuration
 linux addons/regamedll/cs.so
 EOF
     
@@ -233,18 +255,17 @@ install_amxmodx() {
     
     cd "$INSTALL_DIR/temp"
     
-    print_msg "$YELLOW" "Downloading AMX Mod X base..."
-    wget -q "$AMXMODX_URL" -O amxmodx_base.tar.gz
-    
-    print_msg "$YELLOW" "Downloading AMX Mod X cstrike addon..."
-    wget -q "$AMXMODX_CSTRIKE_URL" -O amxmodx_cstrike.tar.gz
+    download_file "$AMXMODX_URL" "amxmodx_base.tar.gz" "AMX Mod X base"
+    download_file "$AMXMODX_CSTRIKE_URL" "amxmodx_cstrike.tar.gz" "AMX Mod X cstrike addon"
     
     # Extract to cstrike folder
     tar -xzf amxmodx_base.tar.gz -C "$INSTALL_DIR/server/cstrike/"
     tar -xzf amxmodx_cstrike.tar.gz -C "$INSTALL_DIR/server/cstrike/"
     
-    # Add AMX Mod X to metamod plugins
-    echo "linux addons/amxmodx/dlls/amxmodx_mm_i386.so" >> "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini"
+    # Add AMX Mod X to metamod plugins (append if not already present)
+    if ! grep -q "amxmodx_mm_i386.so" "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini" 2>/dev/null; then
+        echo "linux addons/amxmodx/dlls/amxmodx_mm_i386.so" >> "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini"
+    fi
     
     rm -f amxmodx_base.tar.gz amxmodx_cstrike.tar.gz
     
