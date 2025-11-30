@@ -2,7 +2,7 @@
 
 # =============================================================================
 # Counter-Strike 1.6 Server Installer
-# Installs: ReHLDS, AMX Mod X, Metamod-r, ReGameDLL_CS
+# Installs: ReHLDS, AMX Mod X, Metamod-r, ReGameDLL_CS, ReAPI, YaPB
 # Usage: ./install.sh [install_dir]
 # =============================================================================
 
@@ -27,6 +27,8 @@ AMXMODX_CSTRIKE_URL="https://www.amxmodx.org/amxxdrop/1.10/amxmodx-1.10.0-git546
 REHLDS_API="https://api.github.com/repos/dreamstalker/rehlds/releases/latest"
 METAMOD_API="https://api.github.com/repos/theAsmodai/metamod-r/releases/latest"
 REGAMEDLL_API="https://api.github.com/repos/s1lentq/ReGameDLL_CS/releases/latest"
+REAPI_API="https://api.github.com/repos/s1lentq/reapi/releases/latest"
+YAPB_API="https://api.github.com/repos/yapb/yapb/releases/latest"
 
 # Print colored message
 print_msg() {
@@ -249,6 +251,88 @@ EOF
     print_msg "$GREEN" "ReGameDLL_CS installed successfully!"
 }
 
+# Download and install ReAPI
+install_reapi() {
+    print_header "Installing ReAPI"
+    
+    cd "$INSTALL_DIR/temp"
+    
+    # Get latest release URL from GitHub API
+    REAPI_URL=$(get_github_release_url "$REAPI_API" "reapi.*linux.*zip")
+    
+    download_file "$REAPI_URL" "reapi.zip" "ReAPI"
+    
+    unzip -o reapi.zip -d reapi_temp
+    
+    # Copy ReAPI files to cstrike
+    if [ -d "reapi_temp/addons" ]; then
+        cp -rf reapi_temp/addons/* "$INSTALL_DIR/server/cstrike/addons/"
+    fi
+    
+    # Add ReAPI to metamod plugins
+    if ! grep -q "reapi_amxx_i386.so" "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini" 2>/dev/null; then
+        echo "linux addons/amxmodx/modules/reapi_amxx_i386.so" >> "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini"
+    fi
+    
+    rm -rf reapi_temp reapi.zip
+    
+    print_msg "$GREEN" "ReAPI installed successfully!"
+}
+
+# Download and install YaPB (Yet another POD Bot)
+install_yapb() {
+    print_header "Installing YaPB (Yet another POD Bot)"
+    
+    cd "$INSTALL_DIR/temp"
+    
+    # Get latest release URL from GitHub API
+    YAPB_URL=$(get_github_release_url "$YAPB_API" "yapb.*linux.*tar.xz")
+    
+    if [ -z "$YAPB_URL" ]; then
+        # Try alternative pattern
+        YAPB_URL=$(get_github_release_url "$YAPB_API" "linux.*tar.xz")
+    fi
+    
+    if [ -z "$YAPB_URL" ]; then
+        # Try .tar.gz pattern
+        YAPB_URL=$(get_github_release_url "$YAPB_API" "yapb.*linux.*tar.gz")
+    fi
+    
+    if [ -n "$YAPB_URL" ]; then
+        if [[ "$YAPB_URL" == *.xz ]]; then
+            download_file "$YAPB_URL" "yapb.tar.xz" "YaPB"
+            mkdir -p yapb_temp
+            tar -xJf yapb.tar.xz -C yapb_temp
+        else
+            download_file "$YAPB_URL" "yapb.tar.gz" "YaPB"
+            mkdir -p yapb_temp
+            tar -xzf yapb.tar.gz -C yapb_temp
+        fi
+        
+        # Copy YaPB files
+        if [ -d "yapb_temp/addons" ]; then
+            cp -rf yapb_temp/addons/* "$INSTALL_DIR/server/cstrike/addons/"
+        elif [ -d "yapb_temp/yapb" ]; then
+            mkdir -p "$INSTALL_DIR/server/cstrike/addons"
+            cp -rf yapb_temp/yapb "$INSTALL_DIR/server/cstrike/addons/"
+        else
+            # Find and copy yapb directory
+            find yapb_temp -type d -name "yapb" -exec cp -rf {} "$INSTALL_DIR/server/cstrike/addons/" \;
+        fi
+        
+        # Add YaPB to metamod plugins
+        if ! grep -q "yapb.so" "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini" 2>/dev/null; then
+            echo "linux addons/yapb/bin/yapb.so" >> "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini"
+        fi
+        
+        rm -rf yapb_temp yapb.tar.xz yapb.tar.gz
+        
+        print_msg "$GREEN" "YaPB installed successfully!"
+    else
+        print_msg "$YELLOW" "Warning: Could not download YaPB. Please install manually from https://github.com/yapb/yapb"
+    fi
+}
+
 # Download and install AMX Mod X
 install_amxmodx() {
     print_header "Installing AMX Mod X"
@@ -336,6 +420,35 @@ sv_logecho 1
 sv_logfile 1
 mp_logfile 1
 mp_logmessages 1
+
+// =============================================================================
+// YaPB Bot Configuration
+// =============================================================================
+// Więcej ustawień: https://yapb.jeefo.net/wiki/
+
+// Włącz automatyczne dodawanie botów
+yb_quota 10                    // Liczba botów na serwerze
+yb_quota_mode fill             // Tryb: fill (dopełnianie do maxplayers), normal (stała liczba)
+yb_autovacate 1                // Usuń bota gdy gracz dołącza
+yb_difficulty 2                // Poziom trudności: 0-4 (0=najłatwiejszy, 4=najtrudniejszy)
+yb_min_bots 0                  // Minimalna liczba botów
+yb_max_bots -1                 // Maksymalna liczba botów (-1 = bez limitu)
+
+// Zachowanie botów
+yb_join_delay 3.0              // Opóźnienie dołączania botów (sekundy)
+yb_think_fps 30                // Częstotliwość myślenia botów
+yb_user_follow_percent 20      // Szansa że bot będzie podążać za graczem (%)
+yb_user_max_followers 1        // Max botów podążających za graczem
+yb_walking_allowed 1           // Pozwól botom chodzić (nie tylko biegać)
+yb_camping_allowed 1           // Pozwól botom na camping
+yb_radio_mode 2                // Używanie radia: 0=off, 1=standard, 2=chatter
+yb_spray_tags 1                // Boty używają sprayów
+yb_knife_mode 0                // Tryb noża: 0=off, 1=on
+yb_economics_rounds 1          // Zarządzanie ekonomią
+
+// Komunikacja botów
+yb_chat 1                      // Boty piszą na chacie
+yb_language en                 // Język botów
 
 // Execute additional configs
 exec listip.cfg
@@ -562,6 +675,14 @@ show_final_info() {
     echo ""
     echo -e "${YELLOW}Installation Directory:${NC} $INSTALL_DIR"
     echo ""
+    echo -e "${YELLOW}Installed Components:${NC}"
+    echo -e "  - ReHLDS (Enhanced HLDS)"
+    echo -e "  - Metamod-r (Plugin system)"
+    echo -e "  - ReGameDLL_CS (Enhanced game logic)"
+    echo -e "  - ReAPI (Advanced API for plugins)"
+    echo -e "  - AMX Mod X (Admin and plugin system)"
+    echo -e "  - YaPB (Yet another POD Bot - AI bots)"
+    echo ""
     echo -e "${YELLOW}Server Control Commands:${NC}"
     echo -e "  Start:   ${BLUE}$INSTALL_DIR/start.sh${NC}"
     echo -e "  Stop:    ${BLUE}$INSTALL_DIR/stop.sh${NC}"
@@ -574,6 +695,14 @@ show_final_info() {
     echo -e "  AMX Admins:    ${BLUE}$INSTALL_DIR/server/cstrike/addons/amxmodx/configs/users.ini${NC}"
     echo -e "  AMX Plugins:   ${BLUE}$INSTALL_DIR/server/cstrike/addons/amxmodx/configs/plugins.ini${NC}"
     echo -e "  Map Cycle:     ${BLUE}$INSTALL_DIR/server/cstrike/mapcycle.txt${NC}"
+    echo -e "  YaPB Config:   ${BLUE}$INSTALL_DIR/server/cstrike/addons/yapb/conf/yapb.cfg${NC}"
+    echo ""
+    echo -e "${YELLOW}Bot Commands (YaPB):${NC}"
+    echo -e "  yb add         - Add a bot"
+    echo -e "  yb kick        - Kick a random bot"
+    echo -e "  yb killbots    - Kill all bots"
+    echo -e "  yb fill        - Fill server with bots"
+    echo -e "  yb menu        - Open bot menu"
     echo ""
     echo -e "${RED}IMPORTANT:${NC} Change the RCON password in server.cfg before running the server!"
     echo -e "${RED}IMPORTANT:${NC} Configure your firewall to allow port 27015 (UDP)"
@@ -597,7 +726,9 @@ main() {
     install_rehlds
     install_metamod
     install_regamedll
+    install_reapi
     install_amxmodx
+    install_yapb
     create_server_config
     configure_amxmodx
     create_control_scripts
