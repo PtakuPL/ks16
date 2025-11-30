@@ -269,10 +269,9 @@ install_reapi() {
         cp -rf reapi_temp/addons/* "$INSTALL_DIR/server/cstrike/addons/"
     fi
     
-    # Add ReAPI to metamod plugins
-    if ! grep -q "reapi_amxx_i386.so" "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini" 2>/dev/null; then
-        echo "linux addons/amxmodx/modules/reapi_amxx_i386.so" >> "$INSTALL_DIR/server/cstrike/addons/metamod/plugins.ini"
-    fi
+    # Add ReAPI to metamod plugins (ReAPI module for AMX Mod X)
+    # Note: ReAPI module is loaded by AMX Mod X, not by Metamod directly
+    # The module is in addons/amxmodx/modules/ and configured in modules.ini
     
     rm -rf reapi_temp reapi.zip
     
@@ -316,8 +315,13 @@ install_yapb() {
             mkdir -p "$INSTALL_DIR/server/cstrike/addons"
             cp -rf yapb_temp/yapb "$INSTALL_DIR/server/cstrike/addons/"
         else
-            # Find and copy yapb directory
-            find yapb_temp -type d -name "yapb" -exec cp -rf {} "$INSTALL_DIR/server/cstrike/addons/" \;
+            # Find yapb directory and copy it (handle nested structure)
+            local yapb_dir
+            yapb_dir=$(find yapb_temp -maxdepth 2 -type d -name "yapb" | head -n1)
+            if [ -n "$yapb_dir" ]; then
+                mkdir -p "$INSTALL_DIR/server/cstrike/addons"
+                cp -rf "$yapb_dir" "$INSTALL_DIR/server/cstrike/addons/"
+            fi
         fi
         
         # Add YaPB to metamod plugins
@@ -424,31 +428,31 @@ mp_logmessages 1
 // =============================================================================
 // YaPB Bot Configuration
 // =============================================================================
-// Więcej ustawień: https://yapb.jeefo.net/wiki/
+// More settings: https://yapb.jeefo.net/wiki/
 
-// Włącz automatyczne dodawanie botów
-yb_quota 10                    // Liczba botów na serwerze
-yb_quota_mode fill             // Tryb: fill (dopełnianie do maxplayers), normal (stała liczba)
-yb_autovacate 1                // Usuń bota gdy gracz dołącza
-yb_difficulty 2                // Poziom trudności: 0-4 (0=najłatwiejszy, 4=najtrudniejszy)
-yb_min_bots 0                  // Minimalna liczba botów
-yb_max_bots -1                 // Maksymalna liczba botów (-1 = bez limitu)
+// Bot quota settings
+yb_quota 10                    // Number of bots on server
+yb_quota_mode fill             // Mode: fill (fill up to maxplayers), normal (fixed number)
+yb_autovacate 1                // Remove bot when player joins
+yb_difficulty 2                // Difficulty level: 0-4 (0=easiest, 4=hardest)
+yb_min_bots 0                  // Minimum number of bots
+yb_max_bots -1                 // Maximum number of bots (-1 = no limit)
 
-// Zachowanie botów
-yb_join_delay 3.0              // Opóźnienie dołączania botów (sekundy)
-yb_think_fps 30                // Częstotliwość myślenia botów
-yb_user_follow_percent 20      // Szansa że bot będzie podążać za graczem (%)
-yb_user_max_followers 1        // Max botów podążających za graczem
-yb_walking_allowed 1           // Pozwól botom chodzić (nie tylko biegać)
-yb_camping_allowed 1           // Pozwól botom na camping
-yb_radio_mode 2                // Używanie radia: 0=off, 1=standard, 2=chatter
-yb_spray_tags 1                // Boty używają sprayów
-yb_knife_mode 0                // Tryb noża: 0=off, 1=on
-yb_economics_rounds 1          // Zarządzanie ekonomią
+// Bot behavior
+yb_join_delay 3.0              // Bot join delay (seconds)
+yb_think_fps 30                // Bot thinking frequency
+yb_user_follow_percent 20      // Chance that bot will follow player (%)
+yb_user_max_followers 1        // Max bots following a player
+yb_walking_allowed 1           // Allow bots to walk (not only run)
+yb_camping_allowed 1           // Allow bots to camp
+yb_radio_mode 2                // Radio usage: 0=off, 1=standard, 2=chatter
+yb_spray_tags 1                // Bots use spray tags
+yb_knife_mode 0                // Knife mode: 0=off, 1=on
+yb_economics_rounds 1          // Economy management
 
-// Komunikacja botów
-yb_chat 1                      // Boty piszą na chacie
-yb_language en                 // Język botów
+// Bot communication
+yb_chat 1                      // Bots write on chat
+yb_language en                 // Bot language
 
 // Execute additional configs
 exec listip.cfg

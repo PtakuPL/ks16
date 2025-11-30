@@ -112,7 +112,7 @@ YaPB (Yet another POD Bot) to nowoczesny system botów dla CS 1.6.
 yb add              # Dodaj bota
 yb add [nazwa]      # Dodaj bota o konkretnej nazwie
 yb kick             # Wyrzuć losowego bota
-yb kickall          # Wyrzuć wszystkie boty
+yb kick all         # Wyrzuć wszystkie boty
 yb fill             # Wypełnij serwer botami
 yb menu             # Otwórz menu botów
 yb killbots         # Zabij wszystkie boty
